@@ -3,7 +3,7 @@ title: "Activity 3 - MLR"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE,message=false}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -31,7 +31,10 @@ Remember that [Emil Hvitfeldt](https://www.emilhvitfeldt.com/) (of Posit) has pu
 - Run the `load-packages` code chunk or **knit** <img src="../README-img/knit-icon.png" alt="knit" width = "20"/> icon your Rmd document to verify that no errors occur.
 
 ```{r load-packages}
-
+library(tidyverse)
+library(tidymodels)
+library(skimr)
+library(GGally)
 ```
 
 Since we will be looking at many relationships graphically, it will be nice to not have to code each of these individually.
@@ -58,8 +61,16 @@ We can access the raw data from their tab-delimited text file link: https://www.
 
 Create a new R code chunk below that is titled `load-data` and reads in the above linked TSV (tab-separated values) file by doing the following:
 
+
+```{r load-data}
+hfi <- read_csv("hfi.csv")
+hfi_2016 <- hfi %>% filter(year == 2016)
+head(hfi_2016)
+```
+
 - Rather than downloading this file, uploading to RStudio, then reading it in, explore how to load this file directly from the provided URL with `readr::read_tsv` (`{readr}` is part of `{tidyverse}`).
-- Assign this data set into a data frame named `hfi` (short for "Human Freedom Index").
+- Assign this data set into a data frame named `hfi` (short for "Human Freedom Index"). IGNORE THIS ABOVE NOTE
+
 - Filter the data `hfi` data frame for year 2016 and assigns the result to an R data object named `hfi_2016`. You will use `hfi_2016` for the remainder of this activity.
 
 We will continue using personal freedom scores, `pf_score`, as the response variable and build on our model that had `pf_expression_control` as the explanatory variable. 
@@ -68,6 +79,29 @@ Create a new R code chunk below, with an appropriate title, that does the follow
 
 - Review the about page of the data set and select at least one additional numeric variables (hint: look for `<dbl>` or `<int>` designations) to describe its distribution. Remember to write your description.
 - You may also wish to do this for `pf_score` and `pf_expression_control` again to help you remember what you noticed last week.
+
+```{r explore-data}
+skim(hfi_2016)
+hfi_2016 <- hfi_2016 %>% select(pf_score,pf_expression_control,pf_ss_homicide)
+hfi_2016
+
+#quickly check out distribution of this new col, pf_ss_homicide
+ggplot(hfi_2016, aes(x = pf_ss_homicide)) +
+  geom_histogram(binwidth = .5, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of pf_ss_homicide",
+       x = "pf_ss_homicide",
+       y = "Frequency")
+
+ggplot(hfi_2016, aes(y = pf_ss_homicide)) +
+  geom_boxplot(fill = "blue") +
+  labs(title = "Distribution of pf_ss_homicide")
+```
+- pf_score has a left-skewed distribution (peak farther from zero, over to right). It has a median of ~7 and half of the rows is between 8 and 6. Two potential outliers around 2.5 but nothing unusual about these scores. The shape is peaky and bimodal, one peak around the median and another around 9.
+
+- pf_expression_control has no outliers and is not skewed. It is roughly unimodal and pretty evenly distributed about the median near 5.
+
+**-   pf_ss_homicide has a far left skew, with the upper 50% of values above 9 or so. There is one outlier around 0.**
+
 
 ## Pairwise relationships
 
@@ -96,12 +130,11 @@ Now, we will obtain graphical and numerical summaries to describe the pairwise r
 
 
 - In the code chunk below titled `pairs-plot`, replace "verbatim" with "r" just before the code chunk title.
-- Replace `explanatory` in the `select` line with the variable you identified above
-- Run your code chunk or knit your document.
+- Replace `explanatory` in the `select` line with the variable you identified above (I did this above in the explore-data code chunk)
+- Run your code chunk or knit your document. 
   
-```{verbatim pairs-plot}
+```{r pairs-plot,warning = false}
 hfi_2016 %>% 
-  select(pf_score, pf_expression_control, explanatory) %>% 
   ggpairs()
 ```
 
@@ -116,12 +149,20 @@ After running the `pairs-plot` code, answer the following questions:
 1. For each pair of variables, how would you describe the relationship graphically?
   Do any of the relationships look linear?
   Are there any interesting/odd features (outliers, non-linear patterns, etc.)?
+  
+  **For pf_score and homicide,they seem to be no interesting patterns besides a subset of 0 scores on homicide. Those tend to be slightly higher pf_scores.  **
 
 2. For each pair of variables, how would you describe the relationship numerically?
+
+**weak correlations can be found, particularly between homicide and pf_score.**
 
 3. Are your two explanatory variables collinear (correlated)?
   Essentially, this means that adding more than one of these variables to the model would not add much value to the model.
   We will talk more on this issue in Activity 4 (other considerations in regression models).
+
+
+**No, they are not collinear. **
+
 
 ## The multiple linear regression model
 
@@ -136,7 +177,7 @@ $$
 - Replace `explanatory`, similarly to what you did in your `pairs-plot` R code chunk.
 - Run your code chunk or knit your document.
   
-```{verbatim mlr-model}
+```{r mlr-model}
 #fit the mlr model
 lm_spec <- linear_reg() %>%
   set_mode("regression") %>%
@@ -145,7 +186,7 @@ lm_spec <- linear_reg() %>%
 lm_spec
 
 mlr_mod <- lm_spec %>% 
-fit(pf_score ~ pf_expression_control + explanatory, data = hfi_2016)
+fit(pf_score ~ pf_expression_control + pf_ss_homicide, data = hfi_2016)
 
 # model output
 tidy(mlr_mod)
@@ -163,8 +204,17 @@ $$
   where $b_0$ and $b_1$ were your model parameter estimates.
   Note that your model here will be different (and have more terms).
 
+$$
+\hat{y} = 3.95 + .535 \times x_1 + .049 \times x_2
+$$
+
+
+
 5. For each of the estimated parameters (the *y*-intercept and the slopes associated with each explanatory variable - three total), interpret these values in the context of this problem.
   That is, what do they mean for a "non-data" person?
+
+
+**- The interpretation for the second slope (beta_2 or pf_ss_homicide) is: “For every 1 unit increase in pf_ss_homicide, there is an associated increase of, on average, .049… units of pf_score, holding all other values constant.**
 
 ## Challenge: 3-D plots
 
@@ -173,12 +223,19 @@ Do some internet sleuthing to minimally produce a 3-D scatterplot (you do not ne
 Ideally, this would be something that plays nicely with (looks similar to) `{ggplot2}`.
 
 - Create a new R code chunk, with a descriptive name, and add your code to create this plot.
+```{r scatter-3d}
+library(plotly)
+scatter_plot <- plot_ly(hfi_2016,x = ~pf_score,y = ~pf_expression_control, z = ~pf_ss_homicide, mode )
+scatter_plot
+```
 
 After doing this, respond to the following prompt:
 
 6. Compare your 3-D scatterplot and the `GGally::ggpairs` output.
   Comment on the strengths and weaknesses of these two visualizations.
   Do both display on GitHub when you push your work there?
+
+**the output from ggpairs is preferrable in my opinion, since the 3D plot doesn't display on Github.**
 
 # Day 2
 
