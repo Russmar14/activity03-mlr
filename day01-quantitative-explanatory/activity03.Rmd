@@ -463,9 +463,14 @@ $$
     Why?
 
 ```{r}
-#need to find measure of model fit code in activity 2
+#assess model fit
+glance(int_mod)
+glance(mlr_mod)
 ```
 
+**-   int_mod has an R^2 of .73 and adj R^2 of .73 while mlr_mod has an R^2 of .72 and adj R^2 of .72. These value are all very similar, and have very small p-values. These stats tell us how much variation is accounted for by each model and then accounts for simplicity - adjusted R^2 will go down as you add variables that don't add much explanatory power to your model.**
+
+NOTE: we could also break into test and train and assess fit on unseen test data.
 
 Recall our brief discussion on how many disciplines are moving away from $p$-values in favor of other methods.
 We will explore $p$-values these other methods later this semester, but we will practice our classical methods here.
@@ -476,10 +481,10 @@ One way to check this is to build our null model (no predictors) and then compar
 
 -   In the code chunk below titled `mod-comp`, replace "verbatim" with "r" just before the code chunk title.
 
-```{verbatim mod-comp}
+```{r mod-comp}
 # null model
 null_mod <- lm_spec %>% 
-fit(response ~ 1, data = data)
+fit(pf_score ~ 1, data = hfi_2016)
 
 anova(
   extract_fit_engine(int_mod),
@@ -487,7 +492,11 @@ anova(
 )
 ```
 
+
+
 19. Using your background knowledge of $F$ tests, what is the $F$ test statistic and $p$-value for this test? Based on an $\alpha = 0.05$ significant level, what should you conclude?
+
+**-   The F-test statistic for this model is testing how likely it is that we'd have our results given a flat slope for all model coefficients. The p-value calcultes the likelihood, given assumptions about the data's distribution.**
 
 ## Partial slope test - do all predictors help explain $y$?
 
@@ -502,15 +511,39 @@ Because the interaction term is a combination of the other two variables, we sho
 
 20. What is the $t$ test statistic and $p$-value associated with this test? Based on an $\alpha = 0.05$ significant level, what should you conclude?
 
+```{r test-int}
+#check out model fit
+tidy(int_mod)
+```
+
+**-   The p-value suggests that we have reason to reject the null for that t-test statistic. This is reasonable evidence (.00126) that this term has an effect (non-zero slope) in the model with others held constant and in the model.**
+
+
 If your interaction term was not significant, you could consider removing it.
 Now look at your two non-interaction terms...
 
 21. What are the $t$ test statistic and $p$-value associated with these tests? Based on an $\alpha = 0.05$ significant level, what should you conclude about these two predictors?
 
+```{r test-non-int}
+#rerun same code just cuz
+tidy(int_mod)
+```
+**-   We also have good evidence for these being significant at the .05 significance level, they're .00117 and .000245 for east_atlanticYes and pf_expression_control respectively. **
+
 You would not need to do (21) if the interaction was significant.
+
 You also should not remove a main variable (non-interaction variable) if the interaction variable remains in your model.
 
 ## Residual assessment - how well does the model fit the data?
 
 You have already done this step in past activities by exploring your residuals (Activity 2).
 Using your final model from Task 3, assess how well your model fits the data.
+
+```{r final-fit-test}
+
+```
+
+
+
+
+
